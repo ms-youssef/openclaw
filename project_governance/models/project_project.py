@@ -12,6 +12,28 @@ class Project(models.Model):
         ('approved', 'Approved for Progression')
     ], string='Governance Status', default='draft', tracking=True)
 
+    # Phase 2: Budget Monitoring Fields
+    utilization_rate = fields.Float(string='Effort Utilization (%)', compute='_compute_budget_metrics', store=True)
+    budget_status = fields.Selection([
+        ('on_track', 'On Track'),
+        ('at_risk', 'At Risk'),
+        ('over_budget', 'Over Budget')
+    ], string='Budget Health', compute='_compute_budget_metrics', store=True)
+
+    @api.depends('allocated_hours', 'effective_hours')
+    def _compute_budget_metrics(self):
+        for project in self:
+            rate = 0.0
+            status = 'on_track'
+            if project.allocated_hours > 0:
+                rate = (project.effective_hours / project.allocated_hours) * 100
+                if rate >= 100:
+                    status = 'over_budget'
+                elif rate >= 80:
+                    status = 'at_risk'
+            project.utilization_rate = rate
+            project.budget_status = status
+
     def action_request_approval(self):
         """Request stage approval from Operations Director"""
         for project in self:
