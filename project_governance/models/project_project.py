@@ -15,8 +15,8 @@ class Project(models.Model):
     def action_request_approval(self):
         """Request stage approval from Operations Director"""
         for project in self:
-            # Check for incomplete deliverables
-            incomplete_deliverables = project.tasks.filtered(lambda t: t.is_deliverable and t.state != '01_done')
+            # Check for incomplete deliverables (tasks marked as deliverables that are not closed)
+            incomplete_deliverables = project.tasks.filtered(lambda t: t.is_deliverable and not t.is_closed)
             if incomplete_deliverables:
                 raise UserError(_("Stage progression blocked. The following deliverables are incomplete: \n %s") % 
                     "\n".join(incomplete_deliverables.mapped('name')))
