@@ -1,0 +1,24 @@
+<odoo>
+    <record id="view_crm_lead_form_cost_sheet" model="ir.ui.view">
+        <field name="name">crm.lead.form.cost.sheet</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_form_view_oppor"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@string='Extra Info']" position="after">
+                <page string="Cost Sheet">
+                    <group>
+                        <field name="global_margin_percent"/>
+                        <field name="cost_sheet_line_ids">
+                            <tree editable="bottom">
+                                <field name="product_id"/>
+                                <field name="quantity"/>
+                                <field name="cost_price"/>
+                                <field name="sale_price"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

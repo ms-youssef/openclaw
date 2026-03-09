@@ -1,0 +1,22 @@
+<odoo>
+    <record id="view_crm_opportunity_form" model="ir.ui.view">
+        <field name="name">crm.opportunity.form.cost.sheet</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_form_view_oppor"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='Followup']" position="after">
+                <page string="Cost Sheet" name="cost_sheet">
+                    <field name="opportunity_cost_sheet_ids" widget="one2many_list">
+                        <tree editable="bottom">
+                            <field name="product_id"/>
+                            <field name="quantity"/>
+                            <field name="for_price"/>
+                            <field name="margin"/>
+                            <field name="sale_price" readonly="1"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
