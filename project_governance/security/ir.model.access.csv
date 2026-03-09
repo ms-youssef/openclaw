@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_project_project_governance,Project Governance Project,project.model_project_project,group_project_governance_approver,1,1,1,1
+access_project_task_governance,Project Governance Task,project.model_project_task,group_project_governance_approver,1,1,1,1

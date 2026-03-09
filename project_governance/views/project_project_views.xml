@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_project_view_form_inherit_governance" model="ir.ui.view">
+        <field name="name">project.project.view.form.inherit.governance</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <button name="action_request_approval" string="Request Stage Approval" type="object"
+                        class="btn-primary" invisible="not is_governance_enabled or governance_state != 'draft'"/>
+                <button name="action_approve_governance" string="Approve Stage Gate" type="object"
+                        class="btn-success" invisible="not is_governance_enabled or governance_state != 'ready'"
+                        groups="project_governance.group_project_governance_approver"/>
+                <field name="governance_state" widget="statusbar" statusbar_visible="draft,ready,approved"
+                       invisible="not is_governance_enabled"/>
+            </header>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="is_governance_enabled"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
