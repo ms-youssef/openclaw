@@ -8,6 +8,7 @@
         - LinkedIn Profile (Contact)
         - Company LinkedIn
     """,
+    'author': 'Mohamed Youssef',
     'depends': ['crm'],
     'data': [
         'views/crm_lead_views.xml',
