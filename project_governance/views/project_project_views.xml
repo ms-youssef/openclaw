@@ -14,8 +14,15 @@
                 <field name="governance_state" widget="statusbar" statusbar_visible="draft,ready,approved"
                        invisible="not is_governance_enabled"/>
             </header>
+            <xpath expr="//sheet" position="after">
+                <div class="alert alert-danger text-center o_form_header" role="alert" invisible="not is_escalated or not is_governance_enabled">
+                    <strong>ESCALATION ACTIVE:</strong> This project has exceeded budget thresholds or stage deadlines.
+                </div>
+            </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="is_governance_enabled"/>
+                <field name="governance_health" widget="state_selection" invisible="not is_governance_enabled"/>
+                <field name="is_escalated" invisible="1"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Financial Control" name="governance_financial_control" invisible="not is_governance_enabled">
@@ -32,6 +39,10 @@
                                    decoration-warning="budget_status == 'at_risk'"
                                    decoration-danger="budget_status == 'over_budget'"/>
                         </group>
+                    </group>
+                    <group string="Governance Schedule">
+                        <field name="stage_deadline"/>
+                        <field name="governance_health" widget="radio" options="{'horizontal': true}"/>
                     </group>
                 </page>
             </xpath>
