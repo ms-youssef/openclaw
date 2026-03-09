@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, api, _
 from odoo.exceptions import UserError
+from datetime import date
 
 class Project(models.Model):
     _inherit = 'project.project'
@@ -20,6 +21,15 @@ class Project(models.Model):
         ('over_budget', 'Over Budget')
     ], string='Budget Health', compute='_compute_budget_metrics', store=True)
 
+    # Phase 3: Escalation & Health Status
+    stage_deadline = fields.Date(string='Stage Target Date', tracking=True)
+    governance_health = fields.Selection([
+        ('on_track', 'On Track'),
+        ('at_risk', 'At Risk'),
+        ('critical', 'Critical / Escalated')
+    ], string='Project Health', compute='_compute_governance_health', store=True, tracking=True)
+    is_escalated = fields.Boolean(string='Escalation Active', compute='_compute_governance_health', store=True)
+
     @api.depends('allocated_hours', 'effective_hours')
     def _compute_budget_metrics(self):
         for project in self:
@@ -33,6 +43,25 @@ class Project(models.Model):
                     status = 'at_risk'
             project.utilization_rate = rate
             project.budget_status = status
+
+    @api.depends('budget_status', 'stage_deadline', 'governance_state')
+    def _compute_governance_health(self):
+        today = date.today()
+        for project in self:
+            health = 'on_track'
+            escalated = False
+            
+            # Check for overdue stage
+            is_overdue = project.stage_deadline and project.stage_deadline < today and project.governance_state != 'approved'
+            
+            if project.budget_status == 'over_budget' or is_overdue:
+                health = 'critical'
+                escalated = True
+            elif project.budget_status == 'at_risk':
+                health = 'at_risk'
+                
+            project.governance_health = health
+            project.is_escalated = escalated
 
     def action_request_approval(self):
         """Request stage approval from Operations Director"""
