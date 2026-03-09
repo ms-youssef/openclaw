@@ -5,13 +5,13 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
-            <!-- Target the first visible website field (Lead partner info) -->
-            <xpath expr="(//field[@name='website'])[1]" position="after">
+            <!-- Target the website field in the lead partner info group -->
+            <xpath expr="//group[@name='lead_partner']//field[@name='website']" position="after">
                 <field name="linkedin_profile" widget="url" placeholder="e.g. https://www.linkedin.com/in/john-doe"/>
                 <field name="company_linkedin" widget="url" placeholder="e.g. https://www.linkedin.com/company/microsoft"/>
             </xpath>
-            <!-- Target the second visible website field (Contact Information tab) -->
-            <xpath expr="(//field[@name='website'])[2]" position="after">
+            <!-- Target the website field in the 'lead' page (Contact Information) -->
+            <xpath expr="//page[@name='lead']//field[@name='website']" position="after">
                 <field name="linkedin_profile" widget="url" placeholder="e.g. https://www.linkedin.com/in/john-doe"/>
                 <field name="company_linkedin" widget="url" placeholder="e.g. https://www.linkedin.com/company/microsoft"/>
             </xpath>
