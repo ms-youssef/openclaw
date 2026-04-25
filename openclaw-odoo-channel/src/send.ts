@@ -36,9 +36,15 @@ export async function sendOdooMessage(params: {
 
   const client = await getOrCreateClient(params.account);
 
-  const body = params.text.trim().startsWith("<")
-    ? params.text
-    : `<p>${escapeHtml(params.text)}</p>`;
+  // Strip thinking blocks from the output boundary before sending to Odoo
+  let processedText = params.text;
+  processedText = processedText.replace(/<think>[\s\S]*?<\/think>\s*/gi, "");
+  processedText = processedText.replace(/<thought>[\s\S]*?<\/thought>\s*/gi, "");
+  processedText = processedText.trim();
+
+  const body = processedText.startsWith("<")
+    ? processedText
+    : `<p>${escapeHtml(processedText)}</p>`;
 
   await client.postMessage({
     model: parsed.model,
