@@ -1,0 +1,16 @@
+openclaw-odoo-channel
+=====================
+
+OpenClaw channel plugin for Odoo Discuss.
+
+This source tree is vendored from the upstream project:
+
+    https://github.com/bemade/openclaw-odoo-channel
+
+Original work Copyright (c) Bemade Inc. <marc@bemade.org>
+Licensed under the GNU Lesser General Public License v3.0 (LGPL-3.0).
+See the LICENSE file for the full license text.
+
+Modifications and integration into this repository are made under the
+same LGPL-3.0 license. If you redistribute the plugin, preserve this
+NOTICE file along with LICENSE.

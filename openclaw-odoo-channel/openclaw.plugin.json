@@ -1,0 +1,9 @@
+{
+  "id": "odoo",
+  "channels": ["odoo"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
