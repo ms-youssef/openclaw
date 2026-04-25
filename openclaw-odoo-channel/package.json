@@ -1,0 +1,14 @@
+{
+  "name": "@ms-youssef/openclaw-odoo-channel",
+  "version": "0.1.0",
+  "description": "Odoo Discuss channel plugin for OpenClaw (vendored from bemade/openclaw-odoo-channel)",
+  "type": "module",
+  "main": "index.ts",
+  "license": "LGPL-3.0",
+  "peerDependencies": {
+    "openclaw": "*"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}
