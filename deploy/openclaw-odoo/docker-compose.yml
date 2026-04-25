@@ -1,0 +1,14 @@
+services:
+  openclaw:
+    build:
+      context: .
+      args:
+        OPENCLAW_TAG: latest
+        PLUGIN_REPO: https://github.com/ms-youssef/openclaw-odoo-channel.git
+        PLUGIN_REF: main
+    image: openclaw-odoo:local
+    container_name: openclaw
+    restart: unless-stopped
+    volumes:
+      - ./config:/home/node/.openclaw
+      - ./data:/home/node/.openclaw-data
