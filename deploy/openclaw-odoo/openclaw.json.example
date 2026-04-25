@@ -1,0 +1,29 @@
+{
+  "plugins": {
+    "entries": {
+      "odoo": { "enabled": true }
+    }
+  },
+  "channels": {
+    "odoo": {
+      "enabled": true,
+      "accounts": {
+        "primary": {
+          "name": "Odoo.sh production",
+          "url": "https://YOUR-DB.odoo.com",
+          "db": "YOUR_DB_NAME",
+          "login": "agent@example.com",
+          "password": "REPLACE_ME",
+          "reconnectDelay": 5,
+          "pollInterval": 15
+        }
+      }
+    }
+  },
+  "bindings": [
+    {
+      "agentId": "your-agent-id",
+      "match": { "channel": "odoo", "accountId": "primary" }
+    }
+  ]
+}
