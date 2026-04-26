@@ -36,9 +36,6 @@ class PurchaseRequisition(models.Model):
                 raise UserError(_('Add at least one product line before inviting vendors.'))
             if not requisition.vendor_partner_ids:
                 raise UserError(_('Add at least one vendor partner.'))
-            missing_technical = requisition.line_ids.filtered(lambda line: not line.tender_technical_approved)
-            if missing_technical:
-                raise UserError(_('Every tender line must be technically approved before sending invitations.'))
             for partner in requisition.vendor_partner_ids:
                 invitation = requisition.invitation_ids.filtered(lambda item: item.partner_id == partner)[:1]
                 if not invitation:
@@ -81,17 +78,24 @@ class PurchaseRequisition(models.Model):
                 raise UserError(_('Send invitations before opening live bidding.'))
             if not requisition.invitation_ids.filtered(lambda invitation: invitation.active_bid_id):
                 raise UserError(_('At least one vendor must submit a quote before live bidding.'))
+            approved_invitations = requisition.invitation_ids.filtered(lambda invitation: invitation.technical_passed)
+            if not approved_invitations:
+                raise UserError(_('Approve at least one vendor technical offer before opening live bidding.'))
             requisition.write({
                 'online_state': 'bidding_open',
                 'bidding_duration_minutes': duration_minutes,
                 'bidding_start_at': now,
                 'bidding_end_at': now + timedelta(minutes=duration_minutes),
             })
-            requisition.invitation_ids.filtered(lambda item: item.state in ('sent', 'submitted')).write({'state': 'live'})
-            for invitation in requisition.invitation_ids:
+            approved_invitations.filtered(lambda item: item.state in ('sent', 'submitted')).write({'state': 'live'})
+            for invitation in approved_invitations:
                 if template:
                     template.sudo().send_mail(invitation.id, force_send=True)
-            requisition.message_post(body=_('Live bidding opened for %s minutes.') % duration_minutes)
+            skipped = requisition.invitation_ids - approved_invitations
+            if skipped:
+                requisition.message_post(body=_('Live bidding opened for %s minutes. %s vendors were excluded because technical approval is not passed.') % (duration_minutes, len(skipped)))
+            else:
+                requisition.message_post(body=_('Live bidding opened for %s minutes.') % duration_minutes)
 
     def action_close_bidding(self):
         for requisition in self:
@@ -101,7 +105,7 @@ class PurchaseRequisition(models.Model):
         self.ensure_one()
         if self.online_state not in ('bidding_open', 'invited', 'quote_entry'):
             return
-        active_invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id)
+        active_invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id and invitation.technical_passed)
         if not active_invitations:
             did_not_win_tag = self.env.ref('online_tender.tender_tag_did_not_win', raise_if_not_found=False)
             if did_not_win_tag:
@@ -182,8 +186,8 @@ class PurchaseRequisition(models.Model):
                 'price_unit': source_line.price_unit if is_bid_line else requisition_line.price_unit,
                 'date_planned': planned_date,
                 'tender_delivery_days': delivery_days,
-                'tender_technical_approved': requisition_line.tender_technical_approved,
-                'tender_technical_notes': requisition_line.tender_technical_notes,
+                'tender_technical_approved': source_line.technical_approved if is_bid_line else requisition_line.tender_technical_approved,
+                'tender_technical_notes': source_line.technical_notes if is_bid_line else requisition_line.tender_technical_notes,
             }
             vals['order_line'].append((0, 0, line_vals))
         return vals
@@ -200,7 +204,7 @@ class PurchaseRequisition(models.Model):
 
     def _get_live_dashboard_snapshot(self):
         self.ensure_one()
-        invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id)
+        invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id and invitation.technical_passed)
         active_bids = invitations.mapped('active_bid_id')
         best_total = min(active_bids.mapped('total_amount')) if active_bids else 0.0
         delta_model = self.env['tender.bid.line']

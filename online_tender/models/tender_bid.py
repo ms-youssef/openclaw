@@ -55,8 +55,13 @@ class TenderBidLine(models.Model):
     qty = fields.Float(related='requisition_line_id.product_qty', store=True)
     price_unit = fields.Float(required=True, digits='Product Price')
     delivery_days = fields.Integer(string='Delivery Time (Days)')
-    technical_approved = fields.Boolean(related='requisition_line_id.tender_technical_approved', store=True)
-    technical_notes = fields.Text(related='requisition_line_id.tender_technical_notes', store=True)
+    technical_status = fields.Selection([
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ], default='pending', required=True, string='Technical Status')
+    technical_approved = fields.Boolean(compute='_compute_technical_approved', store=True)
+    technical_notes = fields.Text(string='Technical Notes')
     subtotal = fields.Monetary(compute='_compute_subtotal', store=True, currency_field='currency_id')
     currency_id = fields.Many2one(related='bid_id.currency_id', store=True)
     best_other_price = fields.Monetary(compute='_compute_competitive_fields', currency_field='currency_id')
@@ -67,6 +72,11 @@ class TenderBidLine(models.Model):
     def _compute_subtotal(self):
         for line in self:
             line.subtotal = line.price_unit * line.qty
+
+    @api.depends('technical_status')
+    def _compute_technical_approved(self):
+        for line in self:
+            line.technical_approved = line.technical_status == 'approved'
 
     @api.depends('price_unit', 'bid_id.is_active', 'requisition_line_id', 'invitation_id')
     def _compute_competitive_fields(self):
@@ -80,6 +90,7 @@ class TenderBidLine(models.Model):
         domain = [
             ('requisition_line_id', '=', self.requisition_line_id.id),
             ('bid_id.is_active', '=', True),
+            ('bid_id.invitation_id.technical_passed', '=', True),
             ('bid_id.invitation_id', '!=', self.invitation_id.id),
         ]
         prices = self.search(domain).mapped('price_unit')

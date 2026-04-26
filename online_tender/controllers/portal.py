@@ -111,7 +111,7 @@ class OnlineTenderPortal(CustomerPortal):
     def portal_tender_live_submit(self, invitation_id, access_token=None, lines=None, **kw):
         invitation = self._get_invitation_or_404(invitation_id, access_token)
         requisition = invitation.sudo().requisition_id
-        if requisition.online_state != 'bidding_open' or (requisition.bidding_end_at and fields.Datetime.now() >= requisition.bidding_end_at):
+        if invitation.state != 'live' or requisition.online_state != 'bidding_open' or (requisition.bidding_end_at and fields.Datetime.now() >= requisition.bidding_end_at):
             raise UserError(_('Live bidding is closed.'))
         current_bid = invitation.sudo()._portal_ensure_live_bid()
         values = {}
@@ -194,7 +194,7 @@ class OnlineTenderPortal(CustomerPortal):
             )
 
     def _get_live_values(self, invitation, access_token=None):
-        if invitation.requisition_id.online_state != 'bidding_open':
+        if invitation.state != 'live' or invitation.requisition_id.online_state != 'bidding_open':
             return request.redirect((invitation._get_token_url() if access_token else invitation.access_url))
         bid = invitation.sudo()._portal_ensure_live_bid()
         bootstrap = {

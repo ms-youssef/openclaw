@@ -26,6 +26,7 @@ class TenderInvitation(models.Model):
     ], default='draft', required=True, tracking=True, index=True)
     bid_ids = fields.One2many('tender.bid', 'invitation_id', string='Bid History')
     active_bid_id = fields.Many2one('tender.bid', compute='_compute_active_bid_id', inverse='_inverse_active_bid_id', store=True)
+    technical_passed = fields.Boolean(compute='_compute_technical_passed', store=True)
     purchase_order_id = fields.Many2one('purchase.order', string='Draft RFQ', readonly=True, copy=False)
     tag_ids = fields.Many2many('tender.tag', 'tender_invitation_tag_rel', 'invitation_id', 'tag_id', string='Tags')
     total_amount = fields.Monetary(related='active_bid_id.total_amount', currency_field='currency_id', store=True)
@@ -57,6 +58,12 @@ class TenderInvitation(models.Model):
             if invitation.active_bid_id:
                 invitation.bid_ids.filtered(lambda bid: bid != invitation.active_bid_id).write({'is_active': False})
                 invitation.active_bid_id.is_active = True
+
+    @api.depends('active_bid_id', 'active_bid_id.line_ids', 'active_bid_id.line_ids.technical_status')
+    def _compute_technical_passed(self):
+        for invitation in self:
+            lines = invitation.active_bid_id.line_ids
+            invitation.technical_passed = bool(lines) and all(line.technical_status == 'approved' for line in lines)
 
     def _compute_access_url(self):
         for invitation in self:
@@ -108,6 +115,7 @@ class TenderInvitation(models.Model):
                 'requisition_line_id': line.id,
                 'price_unit': values_by_line.get(line.id, {}).get('price_unit', 0.0),
                 'delivery_days': values_by_line.get(line.id, {}).get('delivery_days', 0),
+                'technical_status': 'approved' if submission_kind == 'live' else 'pending',
             }) for line in self.requisition_id.line_ids],
         })
         self.active_bid_id = bid
