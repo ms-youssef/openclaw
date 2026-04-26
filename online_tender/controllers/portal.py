@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import base64
 import json
 from hmac import compare_digest as consteq
 
@@ -116,9 +117,15 @@ class OnlineTenderPortal(CustomerPortal):
         values = {}
         for item in lines or []:
             if 'line_id' in item:
-                values[int(item['line_id'])] = float(item.get('price_unit') or 0.0)
+                values[int(item['line_id'])] = {
+                    'price_unit': float(item.get('price_unit') or 0.0),
+                    'delivery_days': int(item.get('delivery_days') or 0),
+                }
         for bid_line in current_bid.line_ids:
-            values.setdefault(bid_line.requisition_line_id.id, bid_line.price_unit)
+            values.setdefault(bid_line.requisition_line_id.id, {
+                'price_unit': bid_line.price_unit,
+                'delivery_days': bid_line.delivery_days,
+            })
         invitation.sudo().action_submit_quote(values, submission_kind='live')
         return invitation.sudo()._get_delta_snapshot()
 
@@ -154,8 +161,37 @@ class OnlineTenderPortal(CustomerPortal):
             price = float(value)
             if price < 0:
                 raise ValidationError(_('Price cannot be negative.'))
-            line_values[line.id] = price
+            delivery_days = int(post.get('delivery_days_%s' % line.id) or line.tender_delivery_days or 0)
+            if delivery_days < 0:
+                raise ValidationError(_('Delivery time cannot be negative.'))
+            line_values[line.id] = {
+                'price_unit': price,
+                'delivery_days': delivery_days,
+            }
+        self._post_portal_attachments(invitation, post)
         return line_values
+
+    def _post_portal_attachments(self, invitation, post):
+        message = post.get('message')
+        files = request.httprequest.files.getlist('attachment')
+        attachment_ids = []
+        for upload in files:
+            if not upload or not upload.filename:
+                continue
+            data = upload.read()
+            attachment = request.env['ir.attachment'].sudo().create({
+                'name': upload.filename,
+                'datas': base64.b64encode(data).decode(),
+                'res_model': invitation._name,
+                'res_id': invitation.id,
+                'mimetype': upload.mimetype,
+            })
+            attachment_ids.append(attachment.id)
+        if message or attachment_ids:
+            invitation.sudo().message_post(
+                body=message or _('Vendor uploaded tender attachment.'),
+                attachment_ids=attachment_ids,
+            )
 
     def _get_live_values(self, invitation, access_token=None):
         if invitation.requisition_id.online_state != 'bidding_open':

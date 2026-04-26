@@ -35,6 +35,8 @@
                             <field name="product_id"/>
                             <field name="qty"/>
                             <field name="price_unit"/>
+                            <field name="delivery_days"/>
+                            <field name="technical_approved"/>
                             <field name="subtotal"/>
                             <field name="delta_percent"/>
                             <field name="is_winner"/>

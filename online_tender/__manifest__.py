@@ -29,6 +29,7 @@
         'views/tender_tag_views.xml',
         'views/tender_bid_views.xml',
         'views/tender_invitation_views.xml',
+        'views/purchase_order_views.xml',
         'views/purchase_requisition_views.xml',
         'views/online_tender_menus.xml',
         'views/portal_templates.xml',
