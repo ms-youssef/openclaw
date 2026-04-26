@@ -81,7 +81,7 @@
                                 <tr t-foreach="requisition.line_ids" t-as="line">
                                     <td>
                                         <span t-field="line.product_id"/>
-                                        <div class="text-muted small" t-field="line.name"/>
+                                        <div class="text-muted small" t-out="line.product_id.display_name"/>
                                     </td>
                                     <td class="text-end"><span t-field="line.product_qty"/> <span t-field="line.product_uom_id"/></td>
                                     <td class="text-end">
