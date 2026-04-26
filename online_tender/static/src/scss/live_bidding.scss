@@ -1,0 +1,30 @@
+.o_tender_live {
+    .o_tender_countdown {
+        font-size: 1rem;
+        letter-spacing: 0;
+        min-width: 4.5rem;
+    }
+
+    .o_tender_price_input {
+        max-width: 10rem;
+        margin-left: auto;
+    }
+
+    .o_tender_delta,
+    .o_tender_overall_delta {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .is-winning {
+        color: #14883d;
+    }
+
+    .is-losing {
+        color: #b42318;
+    }
+
+    .o_tender_is_winning,
+    .o_tender_overall_winning {
+        font-size: 1.1rem;
+    }
+}

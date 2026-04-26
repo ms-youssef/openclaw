@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tender_invitation_user,tender.invitation user,model_tender_invitation,group_tender_user,1,1,1,1
+access_tender_invitation_manager,tender.invitation manager,model_tender_invitation,group_tender_manager,1,1,1,1
+access_tender_invitation_portal,tender.invitation portal,model_tender_invitation,base.group_portal,1,0,0,0
+access_tender_bid_user,tender.bid user,model_tender_bid,group_tender_user,1,1,1,1
+access_tender_bid_portal,tender.bid portal,model_tender_bid,base.group_portal,1,0,0,0
+access_tender_bid_line_user,tender.bid.line user,model_tender_bid_line,group_tender_user,1,1,1,1
+access_tender_bid_line_portal,tender.bid.line portal,model_tender_bid_line,base.group_portal,1,0,0,0
+access_tender_tag_user,tender.tag user,model_tender_tag,group_tender_user,1,0,0,0
+access_tender_tag_manager,tender.tag manager,model_tender_tag,group_tender_manager,1,1,1,1
+access_tender_open_bidding_wizard,tender.open.bidding.wizard,model_tender_open_bidding_wizard,group_tender_user,1,1,1,1

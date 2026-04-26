@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tender_invitation_list" model="ir.ui.view">
+        <field name="name">tender.invitation.list</field>
+        <field name="model">tender.invitation</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="requisition_id"/>
+                <field name="partner_id"/>
+                <field name="state"/>
+                <field name="total_amount"/>
+                <field name="tag_ids" widget="many2many_tags"/>
+                <field name="access_token" optional="hide"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tender_invitation_form" model="ir.ui.view">
+        <field name="name">tender.invitation.form</field>
+        <field name="model">tender.invitation</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_view_portal" string="Open Portal" type="object" class="btn-secondary"/>
+                    <button name="action_regenerate_token" string="Regenerate Token" type="object" groups="online_tender.group_tender_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="sent,submitted,live,closed,won,lost"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Vendor Info">
+                            <field name="requisition_id"/>
+                            <field name="partner_id"/>
+                            <field name="access_url" readonly="1"/>
+                            <field name="access_token" readonly="1" groups="online_tender.group_tender_manager"/>
+                        </group>
+                        <group string="Results">
+                            <field name="active_bid_id" readonly="1"/>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="tag_ids" widget="many2many_tags"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Bid History">
+                            <field name="bid_ids" readonly="1">
+                                <list>
+                                    <field name="submitted_at"/>
+                                    <field name="submission_kind"/>
+                                    <field name="total_amount"/>
+                                    <field name="is_active"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tender_invitation" model="ir.actions.act_window">
+        <field name="name">Vendor Invitations</field>
+        <field name="res_model">tender.invitation</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

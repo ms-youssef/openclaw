@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_my_home_menu_tender" inherit_id="portal.portal_breadcrumbs" priority="40">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name in ('tenders', 'tender')" class="breadcrumb-item">
+                <a t-if="page_name == 'tender'" href="/my/tenders">Tenders</a>
+                <t t-else="">Tenders</t>
+            </li>
+            <li t-if="page_name == 'tender'" class="breadcrumb-item active">
+                <t t-out="invitation.name"/>
+            </li>
+        </xpath>
+    </template>
+
+    <template id="portal_my_home_counter_tender" inherit_id="portal.portal_my_home" priority="40">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Tenders</t>
+                <t t-set="url" t-value="'/my/tenders'"/>
+                <t t-set="placeholder_count" t-value="'tender_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_tenders" name="My Tenders">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Tenders</t>
+            </t>
+            <t t-if="not invitations">
+                <p class="alert alert-info">There are no tender invitations for your account.</p>
+            </t>
+            <t t-if="invitations">
+                <table class="table table-hover o_portal_tender_table">
+                    <thead>
+                        <tr>
+                            <th>Tender</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="invitations" t-as="invitation">
+                            <td><a t-att-href="invitation.access_url"><t t-out="invitation.name"/></a></td>
+                            <td><span t-field="invitation.requisition_id.bidding_end_at"/></td>
+                            <td><span t-field="invitation.state"/></td>
+                            <td class="text-end"><span t-field="invitation.total_amount"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+        </t>
+    </template>
+
+    <template id="portal_tender_page" name="Tender Portal Page">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <div class="o_tender_page">
+                <h2><t t-out="requisition.name"/></h2>
+                <p t-if="submitted" class="alert alert-success">Thank you for your bid.</p>
+                <p t-if="error" class="alert alert-danger"><t t-out="error"/></p>
+
+                <t t-if="requisition.online_state == 'bidding_open'">
+                    <a class="btn btn-primary mb-3" t-att-href="(access_token and invitation._get_token_url() or invitation.access_url) + '/live'">Join Live Bidding</a>
+                </t>
+
+                <t t-if="invitation.state in ('sent', 'submitted') and requisition.online_state != 'bidding_open'">
+                    <form method="post" t-att-action="access_token and ('/tender/%s/%s/submit' % (invitation.id, access_token)) or ('/my/tenders/%s/submit' % invitation.id)">
+                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th class="text-end">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="requisition.line_ids" t-as="line">
+                                    <td>
+                                        <span t-field="line.product_id"/>
+                                        <div class="text-muted small" t-field="line.name"/>
+                                    </td>
+                                    <td class="text-end"><span t-field="line.product_qty"/> <span t-field="line.product_uom_id"/></td>
+                                    <td class="text-end">
+                                        <input class="form-control text-end" type="number" min="0" step="0.01" required="required" t-att-name="'price_unit_%s' % line.id" t-att-value="invitation.active_bid_id.line_ids.filtered(lambda item: item.requisition_line_id == line)[:1].price_unit if invitation.active_bid_id else line.price_unit"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button type="submit" class="btn btn-primary">Submit Quote</button>
+                    </form>
+                </t>
+
+                <t t-if="invitation.state in ('closed', 'won', 'lost') or requisition.online_state == 'awarded'">
+                    <div class="alert alert-light border">
+                        <strong>Status:</strong> <span t-field="invitation.state"/>
+                        <div class="mt-2">
+                            <t t-foreach="invitation.tag_ids" t-as="tag">
+                                <span class="badge text-bg-secondary me-1" t-out="tag.name"/>
+                            </t>
+                        </div>
+                    </div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Quantity</th>
+                                <th class="text-end">Your Unit Price</th>
+                                <th class="text-center">Line Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="invitation.active_bid_id.line_ids" t-as="line">
+                                <td><span t-field="line.product_id"/></td>
+                                <td class="text-end"><span t-field="line.qty"/></td>
+                                <td class="text-end"><span t-field="line.price_unit"/></td>
+                                <td class="text-center">
+                                    <span t-if="line.is_winner" class="badge text-bg-success">Best on Line</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </t>
+            </div>
+        </t>
+    </template>
+
+    <template id="portal_tender_live" name="Tender Live Bidding">
+        <t t-call="portal.portal_layout">
+            <div class="o_tender_live" data-invitation-id="invitation.id">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <h2 class="m-0"><t t-out="requisition.name"/></h2>
+                    <div class="o_tender_countdown badge text-bg-dark" data-role="countdown">--:--</div>
+                </div>
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-end">Quantity</th>
+                            <th class="text-end">Your Unit Price</th>
+                            <th class="text-end">Vs Best Other</th>
+                            <th class="text-center">Winning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="bid.line_ids" t-as="line">
+                            <td><span t-field="line.product_id"/></td>
+                            <td class="text-end"><span t-field="line.qty"/></td>
+                            <td class="text-end">
+                                <input class="form-control text-end o_tender_price_input" type="number" min="0" step="0.01" t-att-data-line-id="line.requisition_line_id.id" t-att-value="line.price_unit"/>
+                            </td>
+                            <td class="text-end"><span class="o_tender_delta" t-att-data-line-id="line.requisition_line_id.id">0%</span></td>
+                            <td class="text-center"><span class="o_tender_is_winning" t-att-data-line-id="line.requisition_line_id.id">●</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="o_tender_live_footer d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div>
+                        Overall: <strong class="o_tender_overall_delta">0%</strong>
+                        <span class="o_tender_overall_winning ms-2">●</span>
+                    </div>
+                    <button type="button" class="btn btn-primary o_tender_submit_live">Submit Updated Prices</button>
+                </div>
+                <script type="application/json" id="o_tender_bootstrap"><t t-out="bootstrap_json"/></script>
+            </div>
+        </t>
+    </template>
+</odoo>

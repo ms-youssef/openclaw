@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tender_bid_list" model="ir.ui.view">
+        <field name="name">tender.bid.list</field>
+        <field name="model">tender.bid</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0">
+                <field name="name"/>
+                <field name="invitation_id"/>
+                <field name="partner_id"/>
+                <field name="submitted_at"/>
+                <field name="submission_kind"/>
+                <field name="total_amount"/>
+                <field name="is_active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_tender_bid_form" model="ir.ui.view">
+        <field name="name">tender.bid.form</field>
+        <field name="model">tender.bid</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <sheet>
+                    <group>
+                        <field name="invitation_id"/>
+                        <field name="partner_id"/>
+                        <field name="submitted_at"/>
+                        <field name="submission_kind"/>
+                        <field name="total_amount"/>
+                        <field name="is_active"/>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="product_id"/>
+                            <field name="qty"/>
+                            <field name="price_unit"/>
+                            <field name="subtotal"/>
+                            <field name="delta_percent"/>
+                            <field name="is_winner"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tender_bid" model="ir.actions.act_window">
+        <field name="name">Bid History</field>
+        <field name="res_model">tender.bid</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[]</field>
+    </record>
+</odoo>

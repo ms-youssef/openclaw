@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_template_tender_invitation" model="mail.template">
+        <field name="name">Online Tender Invitation</field>
+        <field name="model_id" ref="model_tender_invitation"/>
+        <field name="subject">Invitation to quote: {{ object.requisition_id.name }}</field>
+        <field name="email_from">{{ user.email_formatted }}</field>
+        <field name="partner_to">{{ object.partner_id.id }}</field>
+        <field name="body_html" type="html">
+            <div>
+                <p>Dear <t t-out="object.partner_id.name or 'Vendor'"/>,</p>
+                <p>You are invited to submit a quotation for <strong t-out="object.requisition_id.name"/>.</p>
+                <p>
+                    <a t-att-href="object.get_base_url() + object._get_token_url()">Open tender portal</a>
+                </p>
+            </div>
+        </field>
+    </record>
+
+    <record id="mail_template_tender_live_bidding_open" model="mail.template">
+        <field name="name">Online Tender Live Bidding Open</field>
+        <field name="model_id" ref="model_tender_invitation"/>
+        <field name="subject">Live bidding is open: {{ object.requisition_id.name }}</field>
+        <field name="email_from">{{ user.email_formatted }}</field>
+        <field name="partner_to">{{ object.partner_id.id }}</field>
+        <field name="body_html" type="html">
+            <div>
+                <p>Dear <t t-out="object.partner_id.name or 'Vendor'"/>,</p>
+                <p>Live bidding for <strong t-out="object.requisition_id.name"/> is now open.</p>
+                <p>
+                    <a t-att-href="object.get_base_url() + object._get_token_url() + '/live'">Join live bidding</a>
+                </p>
+            </div>
+        </field>
+    </record>
+</odoo>

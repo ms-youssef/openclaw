@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_online_tender" name="Online Tender" parent="base.menu_administration" sequence="80" groups="online_tender.group_tender_user"/>
+    <menuitem id="menu_online_tender_requisition" name="Tenders" parent="menu_online_tender" action="action_online_tender_requisition" sequence="10"/>
+    <menuitem id="menu_tender_invitation" name="Vendor Invitations" parent="menu_online_tender" action="action_tender_invitation" sequence="20"/>
+    <menuitem id="menu_tender_bid" name="Bid History" parent="menu_online_tender" action="action_tender_bid" sequence="30"/>
+    <menuitem id="menu_tender_tag" name="Tags" parent="menu_online_tender" action="action_tender_tag" sequence="40" groups="online_tender.group_tender_manager"/>
+</odoo>
