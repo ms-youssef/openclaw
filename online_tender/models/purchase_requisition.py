@@ -27,6 +27,46 @@ class PurchaseRequisition(models.Model):
     winning_invitation_id = fields.Many2one('tender.invitation', readonly=True, copy=False)
     online_tender_purchase_order_ids = fields.One2many('purchase.order', 'online_tender_requisition_id', string='Generated RFQs', readonly=True)
 
+    @api.model
+    def _get_online_tender_type(self):
+        RequisitionType = self.env['purchase.requisition.type'].sudo()
+        for name in ('Purchase Template', 'Call for Tender', 'Tender'):
+            requisition_type = RequisitionType.search([('name', 'ilike', name)], limit=1)
+            if requisition_type:
+                return requisition_type
+        if 'exclusive' in RequisitionType._fields:
+            requisition_type = RequisitionType.search([('exclusive', '=', 'multiple')], limit=1)
+            if requisition_type:
+                return requisition_type
+        return RequisitionType.search([], order='sequence, id', limit=1)
+
+    @api.onchange('is_online_tender')
+    def _onchange_is_online_tender(self):
+        if not self.is_online_tender:
+            return
+        online_tender_type = self._get_online_tender_type()
+        if online_tender_type:
+            self.type_id = online_tender_type
+        self.vendor_id = False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        online_tender_type = False
+        for vals in vals_list:
+            if vals.get('is_online_tender'):
+                online_tender_type = online_tender_type or self._get_online_tender_type()
+                if online_tender_type:
+                    vals.setdefault('type_id', online_tender_type.id)
+                vals.setdefault('vendor_id', False)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if vals.get('is_online_tender') and not vals.get('type_id'):
+            online_tender_type = self._get_online_tender_type()
+            if online_tender_type:
+                vals = dict(vals, type_id=online_tender_type.id, vendor_id=False)
+        return super().write(vals)
+
     def action_send_invitations(self):
         template = self.env.ref('online_tender.mail_template_tender_invitation', raise_if_not_found=False)
         for requisition in self:
