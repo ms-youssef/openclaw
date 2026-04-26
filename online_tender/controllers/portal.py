@@ -3,6 +3,7 @@
 import json
 from hmac import compare_digest as consteq
 
+from markupsafe import Markup
 from werkzeug.exceptions import NotFound
 
 from odoo import fields, http, _
@@ -111,17 +112,37 @@ class OnlineTenderPortal(CustomerPortal):
         requisition = invitation.sudo().requisition_id
         if requisition.online_state != 'bidding_open' or (requisition.bidding_end_at and fields.Datetime.now() >= requisition.bidding_end_at):
             raise UserError(_('Live bidding is closed.'))
-        bid = invitation.sudo()._portal_ensure_live_bid()
+        current_bid = invitation.sudo()._portal_ensure_live_bid()
         values = {}
         for item in lines or []:
             if 'line_id' in item:
                 values[int(item['line_id'])] = float(item.get('price_unit') or 0.0)
-        for line in bid.line_ids:
-            if line.requisition_line_id.id in values:
-                line.price_unit = values[line.requisition_line_id.id]
-        bid.write({'submission_kind': 'live', 'submitted_at': fields.Datetime.now()})
-        requisition.message_post(body=_('Vendor %s adjusted a live bid.') % invitation.partner_id.display_name)
+        for bid_line in current_bid.line_ids:
+            values.setdefault(bid_line.requisition_line_id.id, bid_line.price_unit)
+        invitation.sudo().action_submit_quote(values, submission_kind='live')
         return invitation.sudo()._get_delta_snapshot()
+
+    @http.route(['/online_tender/<int:requisition_id>/dashboard'], type='http', auth='user', website=True)
+    def tender_manager_dashboard(self, requisition_id, **kw):
+        requisition = request.env['purchase.requisition'].browse(requisition_id).exists()
+        if not requisition or not request.env.user.has_group('online_tender.group_tender_manager'):
+            raise NotFound()
+        dashboard = {
+            'requisition_id': requisition.id,
+            'poll_url': '/online_tender/%s/dashboard/poll' % requisition.id,
+        }
+        return request.render('online_tender.tender_manager_dashboard', {
+            'requisition': requisition,
+            'page_name': 'tender_dashboard',
+            'dashboard_json': Markup(json.dumps(dashboard)),
+        })
+
+    @http.route(['/online_tender/<int:requisition_id>/dashboard/poll'], type='json', auth='user', methods=['POST'], csrf=False)
+    def tender_manager_dashboard_poll(self, requisition_id, **kw):
+        requisition = request.env['purchase.requisition'].browse(requisition_id).exists()
+        if not requisition or not request.env.user.has_group('online_tender.group_tender_manager'):
+            raise NotFound()
+        return requisition.sudo()._get_live_dashboard_snapshot()
 
     def _extract_line_values(self, invitation, post):
         line_values = {}
@@ -140,24 +161,19 @@ class OnlineTenderPortal(CustomerPortal):
         if invitation.requisition_id.online_state != 'bidding_open':
             return request.redirect((invitation._get_token_url() if access_token else invitation.access_url))
         bid = invitation.sudo()._portal_ensure_live_bid()
+        bootstrap = {
+            'invitation_id': invitation.id,
+            'access_token': access_token or '',
+            'ends_at': fields.Datetime.to_string(invitation.requisition_id.bidding_end_at),
+            'poll_url': '/my/tenders/%s/live/poll' % invitation.id,
+            'submit_url': '/my/tenders/%s/live/submit' % invitation.id,
+        }
         return {
             'invitation': invitation,
             'requisition': invitation.requisition_id,
             'bid': bid,
             'access_token': access_token,
             'page_name': 'tender',
-            'bootstrap': {
-                'invitation_id': invitation.id,
-                'access_token': access_token or '',
-                'ends_at': fields.Datetime.to_string(invitation.requisition_id.bidding_end_at),
-                'poll_url': '/my/tenders/%s/live/poll' % invitation.id,
-                'submit_url': '/my/tenders/%s/live/submit' % invitation.id,
-            },
-            'bootstrap_json': json.dumps({
-                'invitation_id': invitation.id,
-                'access_token': access_token or '',
-                'ends_at': fields.Datetime.to_string(invitation.requisition_id.bidding_end_at),
-                'poll_url': '/my/tenders/%s/live/poll' % invitation.id,
-                'submit_url': '/my/tenders/%s/live/submit' % invitation.id,
-            }),
+            'bootstrap': bootstrap,
+            'bootstrap_json': Markup(json.dumps(bootstrap)),
         }

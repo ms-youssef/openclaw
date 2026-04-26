@@ -60,6 +60,14 @@ class PurchaseRequisition(models.Model):
             'context': {'default_requisition_id': self.id, 'default_duration_minutes': self.bidding_duration_minutes or 60},
         }
 
+    def action_live_dashboard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/online_tender/%s/dashboard' % self.id,
+            'target': 'new',
+        }
+
     def action_start_bidding(self, duration_minutes=60):
         template = self.env.ref('online_tender.mail_template_tender_live_bidding_open', raise_if_not_found=False)
         now = fields.Datetime.now()
@@ -130,6 +138,66 @@ class PurchaseRequisition(models.Model):
         ])
         for requisition in expired:
             requisition._close_bidding()
+
+    def _get_live_dashboard_snapshot(self):
+        self.ensure_one()
+        invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id)
+        active_bids = invitations.mapped('active_bid_id')
+        best_total = min(active_bids.mapped('total_amount')) if active_bids else 0.0
+        delta_model = self.env['tender.bid.line']
+        lines = []
+        for requisition_line in self.line_ids:
+            bid_lines = active_bids.mapped('line_ids').filtered(lambda line: line.requisition_line_id == requisition_line)
+            best_price = min(bid_lines.mapped('price_unit')) if bid_lines else 0.0
+            bidders = []
+            for invitation in invitations:
+                bid_line = invitation.active_bid_id.line_ids.filtered(lambda line: line.requisition_line_id == requisition_line)[:1]
+                price = bid_line.price_unit if bid_line else 0.0
+                bidders.append({
+                    'invitation_id': invitation.id,
+                    'vendor': invitation.partner_id.display_name,
+                    'price_unit': price,
+                    'delta_percent': delta_model._get_delta_percent(price, best_price) if best_price else 0.0,
+                    'is_best': bool(best_price) and price == best_price,
+                })
+            lines.append({
+                'line_id': requisition_line.id,
+                'product_name': requisition_line.product_id.display_name,
+                'qty': requisition_line.product_qty,
+                'best_price': best_price,
+                'bidders': bidders,
+            })
+        bidders = []
+        for invitation in invitations:
+            total = invitation.active_bid_id.total_amount
+            bidders.append({
+                'invitation_id': invitation.id,
+                'vendor': invitation.partner_id.display_name,
+                'total_amount': total,
+                'delta_percent': delta_model._get_delta_percent(total, best_total) if best_total else 0.0,
+                'is_best': bool(best_total) and total == best_total,
+                'bid_count': len(invitation.bid_ids),
+                'last_bid_at': fields.Datetime.to_string(invitation.active_bid_id.submitted_at),
+            })
+        bidders.sort(key=lambda item: item['total_amount'])
+        history = []
+        bids = self.env['tender.bid'].search([('requisition_id', '=', self.id)], order='submitted_at desc, id desc', limit=30)
+        for bid in bids:
+            history.append({
+                'vendor': bid.partner_id.display_name,
+                'submitted_at': fields.Datetime.to_string(bid.submitted_at),
+                'submission_kind': bid.submission_kind,
+                'total_amount': bid.total_amount,
+            })
+        return {
+            'state': self.online_state,
+            'server_now': fields.Datetime.to_string(fields.Datetime.now()),
+            'ends_at': fields.Datetime.to_string(self.bidding_end_at) if self.bidding_end_at else False,
+            'best_total': best_total,
+            'bidders': bidders,
+            'lines': lines,
+            'history': history,
+        }
 
     @api.constrains('bidding_duration_minutes')
     def _check_bidding_duration_minutes(self):
