@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mcp_enabled_model_view_tree" model="ir.ui.view">
+        <field name="name">mcp.enabled.model.view.tree</field>
+        <field name="model">mcp.enabled.model</field>
+        <field name="arch" type="xml">
+            <list string="MCP Enabled Models">
+                <field name="model_id"/>
+                <field name="model_name"/>
+                <field name="allow_search"/>
+                <field name="allow_read"/>
+                <field name="allow_create"/>
+                <field name="allow_write"/>
+                <field name="allow_unlink"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_enabled_model_view_form" model="ir.ui.view">
+        <field name="name">mcp.enabled.model.view.form</field>
+        <field name="model">mcp.enabled.model</field>
+        <field name="arch" type="xml">
+            <form string="MCP Enabled Model">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <group>
+                        <group>
+                            <field name="model_id" options="{'no_create': True}"/>
+                            <field name="model_name" readonly="1"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group string="Allowed Operations">
+                            <field name="allow_search"/>
+                            <field name="allow_read"/>
+                            <field name="allow_create"/>
+                            <field name="allow_write"/>
+                            <field name="allow_unlink"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description" name="description">
+                            <field name="description"
+                                   placeholder="Describe what this model represents and when the AI should use it. Surfaced as the MCP tool description."/>
+                        </page>
+                        <page string="Allowed Fields" name="allowed_fields">
+                            <field name="allowed_field_ids"
+                                   domain="[('model_id', '=', model_id)]"
+                                   options="{'no_create': True}"/>
+                            <p class="text-muted">
+                                Leave empty to allow every readable, non-binary field on the model.
+                            </p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_enabled_model_view_search" model="ir.ui.view">
+        <field name="name">mcp.enabled.model.view.search</field>
+        <field name="model">mcp.enabled.model</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="model_id"/>
+                <field name="model_name"/>
+                <filter string="Read Only" name="read_only"
+                        domain="[('allow_create', '=', False), ('allow_write', '=', False), ('allow_unlink', '=', False)]"/>
+                <filter string="Writable" name="writable"
+                        domain="['|', '|', ('allow_create', '=', True), ('allow_write', '=', True), ('allow_unlink', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Model" name="group_by_model" context="{'group_by': 'model_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mcp_enabled_model" model="ir.actions.act_window">
+        <field name="name">Enabled Models</field>
+        <field name="res_model">mcp.enabled.model</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Expose your first Odoo model to MCP</p>
+            <p>
+                Pick a model and choose which operations the MCP bridge can perform on it.
+                AI clients will see one tool per allowed operation.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mcp_enabled_model"
+              name="Enabled Models"
+              parent="menu_mcp_server_root"
+              action="action_mcp_enabled_model"
+              sequence="10"/>
+
+    <record id="ir_model_view_form_inherit_mcp" model="ir.ui.view">
+        <field name="name">ir.model.view.form.inherit.mcp</field>
+        <field name="model">ir.model</field>
+        <field name="inherit_id" ref="base.view_model_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='transient']" position="after">
+                <field name="mcp_enabled" string="Exposed via MCP"
+                       groups="mcp_server.group_mcp_administrator"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

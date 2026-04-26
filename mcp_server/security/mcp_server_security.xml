@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_mcp_server" model="ir.module.category">
+        <field name="name">MCP Server</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="privilege_mcp_administrator" model="res.groups.privilege">
+        <field name="name">Administrator</field>
+        <field name="category_id" ref="module_category_mcp_server"/>
+    </record>
+
+    <record id="group_mcp_administrator" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="privilege_id" ref="privilege_mcp_administrator"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+</odoo>

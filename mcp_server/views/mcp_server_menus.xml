@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_mcp_server_root"
+              name="MCP Server"
+              parent="base.menu_administration"
+              sequence="50"
+              groups="mcp_server.group_mcp_administrator"/>
+</odoo>

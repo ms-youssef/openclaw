@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="mcp_enabled_res_partner" model="mcp.enabled.model">
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="description">Contacts and companies in Odoo. Use this to look up customers, suppliers, employees, or any individual or organisation by name, email, or other attributes.</field>
+        <field name="allow_search" eval="True"/>
+        <field name="allow_read" eval="True"/>
+        <field name="allow_create" eval="False"/>
+        <field name="allow_write" eval="False"/>
+        <field name="allow_unlink" eval="False"/>
+    </record>
+
+    <record id="mcp_enabled_res_users" model="mcp.enabled.model">
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="description">Internal and portal users of this Odoo instance. Read-only by default; useful for resolving who created or owns a record.</field>
+        <field name="allow_search" eval="True"/>
+        <field name="allow_read" eval="True"/>
+        <field name="allow_create" eval="False"/>
+        <field name="allow_write" eval="False"/>
+        <field name="allow_unlink" eval="False"/>
+    </record>
+
+    <record id="mcp_enabled_mail_message" model="mcp.enabled.model">
+        <field name="model_id" ref="mail.model_mail_message"/>
+        <field name="description">Chatter messages and log notes attached to any record. Useful for reading discussion history on a partner, sales order, project, etc.</field>
+        <field name="allow_search" eval="True"/>
+        <field name="allow_read" eval="True"/>
+        <field name="allow_create" eval="False"/>
+        <field name="allow_write" eval="False"/>
+        <field name="allow_unlink" eval="False"/>
+    </record>
+</odoo>
