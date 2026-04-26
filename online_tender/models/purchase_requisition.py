@@ -9,6 +9,7 @@ from odoo.exceptions import UserError, ValidationError
 class PurchaseRequisition(models.Model):
     _inherit = 'purchase.requisition'
 
+    vendor_id = fields.Many2one('res.partner', required=False)
     is_online_tender = fields.Boolean(string='Online Tender', tracking=True)
     online_state = fields.Selection([
         ('draft', 'Draft'),
@@ -24,6 +25,7 @@ class PurchaseRequisition(models.Model):
     bidding_end_at = fields.Datetime(readonly=True)
     invitation_ids = fields.One2many('tender.invitation', 'requisition_id', string='Tender Invitations')
     winning_invitation_id = fields.Many2one('tender.invitation', readonly=True, copy=False)
+    online_tender_purchase_order_ids = fields.One2many('purchase.order', 'online_tender_requisition_id', string='Generated RFQs', readonly=True)
 
     def action_send_invitations(self):
         template = self.env.ref('online_tender.mail_template_tender_invitation', raise_if_not_found=False)
@@ -76,17 +78,24 @@ class PurchaseRequisition(models.Model):
                 raise UserError(_('Send invitations before opening live bidding.'))
             if not requisition.invitation_ids.filtered(lambda invitation: invitation.active_bid_id):
                 raise UserError(_('At least one vendor must submit a quote before live bidding.'))
+            approved_invitations = requisition.invitation_ids.filtered(lambda invitation: invitation.technical_passed)
+            if not approved_invitations:
+                raise UserError(_('Approve at least one vendor technical offer before opening live bidding.'))
             requisition.write({
                 'online_state': 'bidding_open',
                 'bidding_duration_minutes': duration_minutes,
                 'bidding_start_at': now,
                 'bidding_end_at': now + timedelta(minutes=duration_minutes),
             })
-            requisition.invitation_ids.filtered(lambda item: item.state in ('sent', 'submitted')).write({'state': 'live'})
-            for invitation in requisition.invitation_ids:
+            approved_invitations.filtered(lambda item: item.state in ('sent', 'submitted')).write({'state': 'live'})
+            for invitation in approved_invitations:
                 if template:
                     template.sudo().send_mail(invitation.id, force_send=True)
-            requisition.message_post(body=_('Live bidding opened for %s minutes.') % duration_minutes)
+            skipped = requisition.invitation_ids - approved_invitations
+            if skipped:
+                requisition.message_post(body=_('Live bidding opened for %s minutes. %s vendors were excluded because technical approval is not passed.') % (duration_minutes, len(skipped)))
+            else:
+                requisition.message_post(body=_('Live bidding opened for %s minutes.') % duration_minutes)
 
     def action_close_bidding(self):
         for requisition in self:
@@ -96,9 +105,13 @@ class PurchaseRequisition(models.Model):
         self.ensure_one()
         if self.online_state not in ('bidding_open', 'invited', 'quote_entry'):
             return
-        active_invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id)
+        active_invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id and invitation.technical_passed)
         if not active_invitations:
+            did_not_win_tag = self.env.ref('online_tender.tender_tag_did_not_win', raise_if_not_found=False)
+            if did_not_win_tag:
+                self.invitation_ids.write({'tag_ids': [(4, did_not_win_tag.id)], 'state': 'lost'})
             self.online_state = 'awarded'
+            self._create_online_tender_rfqs(self.invitation_ids)
             self.message_post(body=_('Online tender closed with no submitted bids.'))
             return
         self.env['tender.bid.line'].search([('requisition_id', '=', self.id)]).write({'is_winner': False})
@@ -115,6 +128,7 @@ class PurchaseRequisition(models.Model):
                     winning_line.invitation_id.tag_ids = [(4, best_line_tag.id)]
         winning_invitation = min(active_invitations, key=lambda invitation: invitation.total_amount)
         self.winning_invitation_id = winning_invitation
+        self.vendor_id = winning_invitation.partner_id
         for invitation in self.invitation_ids:
             if invitation == winning_invitation:
                 invitation.state = 'won'
@@ -127,7 +141,56 @@ class PurchaseRequisition(models.Model):
                 if did_not_win_tag:
                     invitation.tag_ids = [(4, did_not_win_tag.id)]
         self.online_state = 'awarded'
+        self._create_online_tender_rfqs(self.invitation_ids)
         self.message_post(body=_('%s won the online tender with total %s.') % (winning_invitation.partner_id.display_name, winning_invitation.total_amount))
+
+    def _create_online_tender_rfqs(self, invitations):
+        PurchaseOrder = self.env['purchase.order'].sudo()
+        for invitation in invitations:
+            if invitation.purchase_order_id:
+                continue
+            bid = invitation.active_bid_id
+            order_vals = self._prepare_online_tender_rfq_vals(invitation, bid)
+            order = PurchaseOrder.create(order_vals)
+            invitation.purchase_order_id = order
+            if invitation.tag_ids and 'online_tender_tag_ids' in order._fields:
+                order.online_tender_tag_ids = [(6, 0, invitation.tag_ids.ids)]
+            self.message_post(body=_('Draft RFQ %s was created for %s.') % (order.name, invitation.partner_id.display_name))
+
+    def _prepare_online_tender_rfq_vals(self, invitation, bid=False):
+        self.ensure_one()
+        vals = {
+            'partner_id': invitation.partner_id.id,
+            'origin': self.name,
+            'requisition_id': self.id,
+            'online_tender_requisition_id': self.id,
+            'online_tender_invitation_id': invitation.id,
+            'order_line': [],
+        }
+        for field_name in ('company_id', 'currency_id', 'picking_type_id'):
+            if field_name in self._fields and self[field_name]:
+                vals[field_name] = self[field_name].id
+        source_lines = bid.line_ids if bid else self.env['tender.bid.line']
+        if not source_lines:
+            source_lines = self.line_ids
+        for source_line in source_lines:
+            is_bid_line = source_line._name == 'tender.bid.line'
+            requisition_line = source_line.requisition_line_id if is_bid_line else source_line
+            delivery_days = source_line.delivery_days if is_bid_line else requisition_line.tender_delivery_days
+            planned_date = fields.Datetime.now() + timedelta(days=delivery_days or 0)
+            line_vals = {
+                'product_id': requisition_line.product_id.id,
+                'name': requisition_line.product_id.display_name,
+                'product_qty': source_line.qty if is_bid_line else requisition_line.product_qty,
+                'product_uom': (requisition_line.product_uom_id or requisition_line.product_id.uom_id).id,
+                'price_unit': source_line.price_unit if is_bid_line else requisition_line.price_unit,
+                'date_planned': planned_date,
+                'tender_delivery_days': delivery_days,
+                'tender_technical_approved': source_line.technical_approved if is_bid_line else requisition_line.tender_technical_approved,
+                'tender_technical_notes': source_line.technical_notes if is_bid_line else requisition_line.tender_technical_notes,
+            }
+            vals['order_line'].append((0, 0, line_vals))
+        return vals
 
     @api.model
     def _cron_close_expired_biddings(self):
@@ -141,7 +204,7 @@ class PurchaseRequisition(models.Model):
 
     def _get_live_dashboard_snapshot(self):
         self.ensure_one()
-        invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id)
+        invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id and invitation.technical_passed)
         active_bids = invitations.mapped('active_bid_id')
         best_total = min(active_bids.mapped('total_amount')) if active_bids else 0.0
         delta_model = self.env['tender.bid.line']
@@ -157,6 +220,7 @@ class PurchaseRequisition(models.Model):
                     'invitation_id': invitation.id,
                     'vendor': invitation.partner_id.display_name,
                     'price_unit': price,
+                    'delivery_days': bid_line.delivery_days if bid_line else 0,
                     'delta_percent': delta_model._get_delta_percent(price, best_price) if best_price else 0.0,
                     'is_best': bool(best_price) and price == best_price,
                 })
@@ -178,6 +242,7 @@ class PurchaseRequisition(models.Model):
                 'is_best': bool(best_total) and total == best_total,
                 'bid_count': len(invitation.bid_ids),
                 'last_bid_at': fields.Datetime.to_string(invitation.active_bid_id.submitted_at),
+                'delivery_days': max(invitation.active_bid_id.line_ids.mapped('delivery_days') or [0]),
             })
         bidders.sort(key=lambda item: item['total_amount'])
         history = []
@@ -204,3 +269,17 @@ class PurchaseRequisition(models.Model):
         for requisition in self:
             if requisition.bidding_duration_minutes <= 0:
                 raise ValidationError(_('Bidding duration must be positive.'))
+
+
+class PurchaseRequisitionLine(models.Model):
+    _inherit = 'purchase.requisition.line'
+
+    tender_delivery_days = fields.Integer(string='Expected Delivery Time (Days)')
+    tender_technical_approved = fields.Boolean(string='Technically Approved')
+    tender_technical_notes = fields.Text(string='Technical Notes')
+
+    @api.constrains('tender_delivery_days')
+    def _check_tender_delivery_days(self):
+        for line in self:
+            if line.tender_delivery_days < 0:
+                raise ValidationError(_('Delivery time cannot be negative.'))

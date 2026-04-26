@@ -103,9 +103,11 @@
 
         function submitLive() {
             const lines = Array.from(root.querySelectorAll('.o_tender_price_input')).map(function (input) {
+                const deliveryInput = root.querySelector('.o_tender_delivery_input[data-line-id="' + input.dataset.lineId + '"]');
                 return {
                     line_id: Number(input.dataset.lineId),
                     price_unit: Number(input.value || 0),
+                    delivery_days: Number(deliveryInput && deliveryInput.value || 0),
                 };
             });
             submitButton.disabled = true;
@@ -138,6 +140,7 @@
         const lines = dashboardRoot.querySelector('.o_tender_dashboard_lines');
         const history = dashboardRoot.querySelector('.o_tender_dashboard_history');
         const timer = dashboardRoot.querySelector('.o_tender_dashboard_timer');
+        const chart = dashboardRoot.querySelector('.o_tender_dashboard_chart');
         if (timer && snapshot.ends_at) {
             timer.textContent = formatTimer(secondsRemaining(snapshot.ends_at));
         }
@@ -146,20 +149,48 @@
             return '<div class="o_tender_rank_row">' +
                 '<div class="d-flex justify-content-between"><strong>#' + (index + 1) + ' ' + bidder.vendor + '</strong><span>' + formatMoney(bidder.total_amount) + ' (' + formatDelta(bidder.delta_percent) + ')</span></div>' +
                 '<div class="o_tender_bar"><span style="width:' + width + '%"></span></div>' +
-                '<div class="text-muted small">' + bidder.bid_count + ' bids, last: ' + (bidder.last_bid_at || '-') + '</div>' +
+                '<div class="text-muted small">' + bidder.bid_count + ' bids, max delivery: ' + bidder.delivery_days + ' days, last: ' + (bidder.last_bid_at || '-') + '</div>' +
             '</div>';
         }).join('');
         lines.innerHTML = (snapshot.lines || []).map(function (line) {
             const rows = (line.bidders || []).map(function (bidder) {
-                return '<tr><td>' + bidder.vendor + '</td><td class="text-end">' + formatMoney(bidder.price_unit) + '</td><td class="text-end">' + formatDelta(bidder.delta_percent) + '</td><td class="text-center">' + (bidder.is_best ? '*' : '') + '</td></tr>';
+                return '<tr><td>' + bidder.vendor + '</td><td class="text-end">' + formatMoney(bidder.price_unit) + '</td><td class="text-end">' + bidder.delivery_days + '</td><td class="text-end">' + formatDelta(bidder.delta_percent) + '</td><td class="text-center">' + (bidder.is_best ? '*' : '') + '</td></tr>';
             }).join('');
             return '<div class="o_tender_line_panel"><div class="d-flex justify-content-between"><strong>' + line.product_name + '</strong><span>Best: ' + formatMoney(line.best_price) + '</span></div>' +
-                '<table class="table table-sm mb-0"><thead><tr><th>Vendor</th><th class="text-end">Item Price</th><th class="text-end">Vs Best</th><th class="text-center">Best</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+                '<table class="table table-sm mb-0"><thead><tr><th>Vendor</th><th class="text-end">Item Price</th><th class="text-end">Delivery</th><th class="text-end">Vs Best</th><th class="text-center">Best</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
         }).join('');
         history.innerHTML = '<table class="table table-sm"><thead><tr><th>Time</th><th>Vendor</th><th>Kind</th><th class="text-end">Total</th></tr></thead><tbody>' +
             (snapshot.history || []).map(function (bid) {
                 return '<tr><td>' + bid.submitted_at + '</td><td>' + bid.vendor + '</td><td>' + bid.submission_kind + '</td><td class="text-end">' + formatMoney(bid.total_amount) + '</td></tr>';
             }).join('') + '</tbody></table>';
+        drawDashboardChart(chart, snapshot.bidders || []);
+    }
+
+    function drawDashboardChart(canvas, bidders) {
+        if (!canvas) {
+            return;
+        }
+        const width = canvas.clientWidth || 640;
+        const height = Number(canvas.getAttribute('height')) || 220;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, width, height);
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#212529';
+        const max = Math.max.apply(null, bidders.map(function (bidder) { return bidder.total_amount || 0; }).concat([1]));
+        const gap = 16;
+        const barWidth = Math.max(24, (width - gap * (bidders.length + 1)) / Math.max(1, bidders.length));
+        bidders.forEach(function (bidder, index) {
+            const barHeight = Math.max(4, ((bidder.total_amount || 0) / max) * (height - 58));
+            const x = gap + index * (barWidth + gap);
+            const y = height - 34 - barHeight;
+            ctx.fillStyle = bidder.is_best ? '#14883d' : '#6f4e7c';
+            ctx.fillRect(x, y, barWidth, barHeight);
+            ctx.fillStyle = '#212529';
+            ctx.fillText(formatMoney(bidder.total_amount), x, Math.max(12, y - 6));
+            ctx.fillText(String(bidder.vendor || '').slice(0, 16), x, height - 12);
+        });
     }
 
     function pollDashboard() {

@@ -11,6 +11,14 @@
                 <button name="action_live_dashboard" string="Live Dashboard" type="object" invisible="not is_online_tender or online_state != 'bidding_open'" groups="online_tender.group_tender_manager"/>
                 <button name="action_close_bidding" string="Close Bidding" type="object" invisible="not is_online_tender or online_state != 'bidding_open'"/>
             </xpath>
+            <xpath expr="//field[@name='vendor_id']" position="attributes">
+                <attribute name="required">not is_online_tender</attribute>
+            </xpath>
+            <xpath expr="//field[@name='line_ids']//field[@name='price_unit']" position="after">
+                <field name="tender_delivery_days" optional="show"/>
+                <field name="tender_technical_approved" optional="show"/>
+                <field name="tender_technical_notes" optional="hide"/>
+            </xpath>
             <xpath expr="//sheet/group" position="after">
                 <group string="Online Tender">
                     <group>
@@ -34,6 +42,17 @@
                             <field name="partner_id"/>
                             <field name="total_amount"/>
                             <field name="tag_ids" widget="many2many_tags"/>
+                        </list>
+                    </field>
+                </page>
+                <page string="Generated RFQs" invisible="not is_online_tender">
+                    <field name="online_tender_purchase_order_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="partner_id"/>
+                            <field name="amount_total"/>
+                            <field name="online_tender_tag_ids" widget="many2many_tags"/>
+                            <field name="state"/>
                         </list>
                     </field>
                 </page>

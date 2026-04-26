@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_order_form_online_tender" model="ir.ui.view">
+        <field name="name">purchase.order.form.online.tender</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="after">
+                <group string="Online Tender" invisible="not online_tender_requisition_id">
+                    <group>
+                        <field name="online_tender_requisition_id" readonly="1"/>
+                        <field name="online_tender_invitation_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="online_tender_tag_ids" widget="many2many_tags" readonly="1"/>
+                    </group>
+                </group>
+            </xpath>
+            <xpath expr="//field[@name='order_line']//field[@name='price_unit']" position="after">
+                <field name="tender_delivery_days" optional="show"/>
+                <field name="tender_technical_approved" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

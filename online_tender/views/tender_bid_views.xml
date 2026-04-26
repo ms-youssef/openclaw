@@ -20,7 +20,7 @@
         <field name="name">tender.bid.form</field>
         <field name="model">tender.bid</field>
         <field name="arch" type="xml">
-            <form create="0" edit="0">
+            <form create="0">
                 <sheet>
                     <group>
                         <field name="invitation_id"/>
@@ -32,10 +32,14 @@
                     </group>
                     <field name="line_ids">
                         <list editable="bottom" create="0" delete="0">
-                            <field name="product_id"/>
-                            <field name="qty"/>
-                            <field name="price_unit"/>
-                            <field name="subtotal"/>
+                            <field name="product_id" readonly="1"/>
+                            <field name="qty" readonly="1"/>
+                            <field name="price_unit" readonly="1"/>
+                            <field name="delivery_days" readonly="1"/>
+                            <field name="technical_status"/>
+                            <field name="technical_notes"/>
+                            <field name="technical_approved" readonly="1"/>
+                            <field name="subtotal" readonly="1"/>
                             <field name="delta_percent"/>
                             <field name="is_winner"/>
                         </list>
