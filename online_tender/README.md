@@ -44,18 +44,27 @@ Assign internal buyers to:
 
 Portal vendors only need a portal user if they will use `/my/tenders`. Public token links work without login.
 
-## First Tender
+## Workflow
 
 1. Open Purchase > Purchase Agreements.
 2. Create a new purchase agreement.
 3. Enable `Online Tender`.
-4. Add product lines.
-5. Add vendors in `Vendor Partners`.
+4. Add product lines with quantity and estimated unit price.
+5. Add invited vendors in `Vendor Partners`.
 6. Click `Send Invitations`.
-7. Vendors use the emailed `/tender/<id>/<token>` links to submit quotes.
-8. Click `Open Live Bidding`, choose a duration, and confirm.
-9. Vendors use the live page to adjust prices.
-10. Click `Close Bidding`, or wait for the cron to close expired bidding windows.
+7. The system creates a draft RFQ for each vendor and emails each vendor an RFQ portal link.
+8. Vendors submit unit price, delivery lead time, notes, and supporting attachments.
+9. The system updates that vendor's draft RFQ and moves the tender to `Quote Entry`.
+10. The buyer or technical team opens each generated RFQ and sets the RFQ technical state:
+    - `Approve Technical` includes that vendor in live bidding.
+    - `Reject Technical` excludes that vendor from live bidding.
+    - `Reset Technical Review` moves that RFQ back to pending review.
+11. Click `Open Live Bidding`, choose a duration, and confirm.
+12. Only technically approved vendors receive the live bidding invitation.
+13. Vendors use the live page to adjust prices and delivery lead time.
+14. Tender managers use `Live Dashboard` to compare approved vendors by charts, percentages, item prices, and overall ranking.
+15. Click `Close Bidding`, or wait for the cron to close expired bidding windows.
+16. The system awards only among technically approved vendors, sets the best vendor on the tender, applies tags, and keeps all draft RFQs available for review.
 
 The module does not create purchase orders automatically and does not email award results.
 

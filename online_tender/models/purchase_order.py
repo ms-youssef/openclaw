@@ -14,7 +14,7 @@ class PurchaseOrder(models.Model):
         ('pending', 'Pending Technical Approval'),
         ('approved', 'Technically Approved'),
         ('rejected', 'Technically Rejected'),
-    ], default='pending', required=True, tracking=True, copy=False)
+    ], default='pending', tracking=True, copy=False)
 
     def write(self, vals):
         result = super().write(vals)
@@ -24,34 +24,31 @@ class PurchaseOrder(models.Model):
         return result
 
     def action_online_tender_approve_technical(self):
-        for order in self:
-            order._check_online_tender_rfq()
-            order.online_tender_technical_state = 'approved'
-            order.order_line.write({'tender_technical_approved': True})
-            order._sync_technical_state_to_tender_bid('approved')
-            order.message_post(body=_('Technical offer approved for online tender.'))
-            order.online_tender_requisition_id.message_post(
-                body=_('Technical offer approved for %s.') % order.partner_id.display_name
-            )
+        self._set_online_tender_technical_state('approved')
 
     def action_online_tender_reject_technical(self):
-        for order in self:
-            order._check_online_tender_rfq()
-            order.online_tender_technical_state = 'rejected'
-            order.order_line.write({'tender_technical_approved': False})
-            order._sync_technical_state_to_tender_bid('rejected')
-            order.message_post(body=_('Technical offer rejected for online tender.'))
-            order.online_tender_requisition_id.message_post(
-                body=_('Technical offer rejected for %s. This vendor will be excluded from live bidding.') % order.partner_id.display_name
-            )
+        self._set_online_tender_technical_state('rejected')
 
     def action_online_tender_reset_technical(self):
+        self._set_online_tender_technical_state('pending')
+
+    def _set_online_tender_technical_state(self, technical_state):
         for order in self:
             order._check_online_tender_rfq()
-            order.online_tender_technical_state = 'pending'
-            order.order_line.write({'tender_technical_approved': False})
-            order._sync_technical_state_to_tender_bid('pending')
-            order.message_post(body=_('Technical offer reset to pending review.'))
+            order.online_tender_technical_state = technical_state
+            order.order_line.write({'tender_technical_approved': technical_state == 'approved'})
+            if technical_state == 'approved':
+                order.message_post(body=_('Technical offer approved for online tender.'))
+                order.online_tender_requisition_id.message_post(
+                    body=_('Technical offer approved for %s.') % order.partner_id.display_name
+                )
+            elif technical_state == 'rejected':
+                order.message_post(body=_('Technical offer rejected for online tender.'))
+                order.online_tender_requisition_id.message_post(
+                    body=_('Technical offer rejected for %s. This vendor will be excluded from live bidding.') % order.partner_id.display_name
+                )
+            else:
+                order.message_post(body=_('Technical offer reset to pending review.'))
 
     def _check_online_tender_rfq(self):
         self.ensure_one()

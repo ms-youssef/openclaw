@@ -9,9 +9,10 @@
         <field name="body_html" type="html">
             <div>
                 <p>Dear <t t-out="object.partner_id.name or 'Vendor'"/>,</p>
-                <p>You are invited to submit a quotation for <strong t-out="object.requisition_id.name"/>.</p>
+                <p>You are invited to submit an RFQ for <strong t-out="object.requisition_id.name"/>.</p>
+                <p>Please enter your unit price and delivery lead time for each item. You may also attach your technical offer or datasheets.</p>
                 <p>
-                    <a t-att-href="object.get_base_url() + object._get_token_url()">Open tender portal</a>
+                    <a t-att-href="object.get_base_url() + object._get_token_url()">Open RFQ portal</a>
                 </p>
             </div>
         </field>

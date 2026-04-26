@@ -91,7 +91,8 @@ class PurchaseRequisition(models.Model):
                     })
                 else:
                     invitation.state = 'sent'
-                if template:
+                requisition._sync_online_tender_rfq(invitation)
+                if template and not self.env.context.get('skip_online_tender_emails'):
                     template.sudo().send_mail(invitation.id, force_send=True)
             requisition.online_state = 'invited'
             requisition.message_post(body=_('Online tender invitations were sent to %s vendors.') % len(requisition.vendor_partner_ids))
@@ -121,9 +122,9 @@ class PurchaseRequisition(models.Model):
         for requisition in self:
             if not requisition.invitation_ids:
                 raise UserError(_('Send invitations before opening live bidding.'))
-            if not requisition.invitation_ids.filtered(lambda invitation: invitation.active_bid_id):
+            if not requisition._get_submitted_invitations():
                 raise UserError(_('At least one vendor must submit a quote before live bidding.'))
-            approved_invitations = requisition.invitation_ids.filtered(lambda invitation: invitation.technical_passed)
+            approved_invitations = requisition._get_approved_invitations()
             if not approved_invitations:
                 raise UserError(_('Approve at least one vendor technical offer before opening live bidding.'))
             requisition.write({
@@ -134,7 +135,7 @@ class PurchaseRequisition(models.Model):
             })
             approved_invitations.filtered(lambda item: item.state in ('sent', 'submitted')).write({'state': 'live'})
             for invitation in approved_invitations:
-                if template:
+                if template and not self.env.context.get('skip_online_tender_emails'):
                     template.sudo().send_mail(invitation.id, force_send=True)
             skipped = requisition.invitation_ids - approved_invitations
             if skipped:
@@ -150,14 +151,14 @@ class PurchaseRequisition(models.Model):
         self.ensure_one()
         if self.online_state not in ('bidding_open', 'invited', 'quote_entry'):
             return
-        active_invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id and invitation.technical_passed)
+        active_invitations = self._get_approved_invitations()
         if not active_invitations:
             did_not_win_tag = self.env.ref('online_tender.tender_tag_did_not_win', raise_if_not_found=False)
             if did_not_win_tag:
                 self.invitation_ids.write({'tag_ids': [(4, did_not_win_tag.id)], 'state': 'lost'})
             self.online_state = 'awarded'
             self._create_online_tender_rfqs(self.invitation_ids)
-            self.message_post(body=_('Online tender closed with no submitted bids.'))
+            self.message_post(body=_('Online tender closed with no technically approved submitted bids.'))
             return
         self.env['tender.bid.line'].search([('requisition_id', '=', self.id)]).write({'is_winner': False})
         best_line_tag = self.env.ref('online_tender.tender_tag_best_on_line', raise_if_not_found=False)
@@ -194,6 +195,14 @@ class PurchaseRequisition(models.Model):
             bid = invitation.active_bid_id
             order = self._sync_online_tender_rfq(invitation, bid)
             self.message_post(body=_('Draft RFQ %s was updated for %s.') % (order.name, invitation.partner_id.display_name))
+
+    def _get_submitted_invitations(self):
+        self.ensure_one()
+        return self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id)
+
+    def _get_approved_invitations(self):
+        self.ensure_one()
+        return self._get_submitted_invitations().filtered(lambda invitation: invitation.technical_passed)
 
     def _sync_online_tender_rfq(self, invitation, bid=False, reset_technical_state=False):
         self.ensure_one()
@@ -263,7 +272,7 @@ class PurchaseRequisition(models.Model):
 
     def _get_live_dashboard_snapshot(self):
         self.ensure_one()
-        invitations = self.invitation_ids.filtered(lambda invitation: invitation.active_bid_id and invitation.technical_passed)
+        invitations = self._get_approved_invitations()
         active_bids = invitations.mapped('active_bid_id')
         best_total = min(active_bids.mapped('total_amount')) if active_bids else 0.0
         delta_model = self.env['tender.bid.line']
@@ -305,7 +314,10 @@ class PurchaseRequisition(models.Model):
             })
         bidders.sort(key=lambda item: item['total_amount'])
         history = []
-        bids = self.env['tender.bid'].search([('requisition_id', '=', self.id)], order='submitted_at desc, id desc', limit=30)
+        bids = self.env['tender.bid'].search([
+            ('requisition_id', '=', self.id),
+            ('invitation_id', 'in', invitations.ids),
+        ], order='submitted_at desc, id desc', limit=30)
         for bid in bids:
             history.append({
                 'vendor': bid.partner_id.display_name,

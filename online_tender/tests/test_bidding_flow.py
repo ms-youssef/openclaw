@@ -35,6 +35,14 @@ class TestTenderBiddingFlow(TransactionCase):
     def _approve_invitation(self, invitation):
         invitation.purchase_order_id.action_online_tender_approve_technical()
 
+    def test_send_invitations_creates_pending_vendor_rfqs(self):
+        self.requisition.with_context(skip_online_tender_emails=True).action_send_invitations()
+
+        self.assertTrue(self.invitation_a.purchase_order_id)
+        self.assertTrue(self.invitation_b.purchase_order_id)
+        self.assertEqual(self.invitation_a.purchase_order_id.online_tender_technical_state, 'pending')
+        self.assertEqual(self.invitation_a.purchase_order_id.partner_id, self.vendor_a)
+
     def test_bid_supersession_and_delta(self):
         first = self.invitation_a.action_submit_quote({self.line.id: 9.5})
         second = self.invitation_a.action_submit_quote({self.line.id: 9.0})
@@ -65,7 +73,7 @@ class TestTenderBiddingFlow(TransactionCase):
         self.invitation_a.purchase_order_id.action_online_tender_approve_technical()
         self.invitation_b.purchase_order_id.action_online_tender_reject_technical()
 
-        self.requisition.action_start_bidding(duration_minutes=30)
+        self.requisition.with_context(skip_online_tender_emails=True).action_start_bidding(duration_minutes=30)
 
         self.assertTrue(self.invitation_a.technical_passed)
         self.assertFalse(self.invitation_b.technical_passed)

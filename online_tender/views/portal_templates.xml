@@ -58,13 +58,19 @@
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
             <div class="o_tender_page">
-                <h2><t t-out="requisition.name"/></h2>
+                <h2><t t-out="invitation.purchase_order_id.name or requisition.name"/></h2>
+                <p class="text-muted" t-if="invitation.purchase_order_id">
+                    RFQ for <t t-out="requisition.name"/>
+                </p>
                 <p t-if="submitted" class="alert alert-success">Thank you for your bid.</p>
                 <p t-if="error" class="alert alert-danger"><t t-out="error"/></p>
 
-                <t t-if="requisition.online_state == 'bidding_open'">
+                <t t-if="invitation.state == 'live' and requisition.online_state == 'bidding_open'">
                     <a class="btn btn-primary mb-3" t-att-href="(access_token and invitation._get_token_url() or invitation.access_url) + '/live'">Join Live Bidding</a>
                 </t>
+                <p t-if="invitation.state != 'live' and requisition.online_state == 'bidding_open'" class="alert alert-warning">
+                    This RFQ is not included in the live bidding round.
+                </p>
 
                 <t t-if="invitation.state in ('sent', 'submitted') and requisition.online_state != 'bidding_open'">
                     <form method="post" enctype="multipart/form-data" t-att-action="access_token and ('/tender/%s/%s/submit' % (invitation.id, access_token)) or ('/my/tenders/%s/submit' % invitation.id)">
@@ -176,14 +182,14 @@
                                 <input class="form-control text-end o_tender_delivery_input" type="number" min="0" step="1" t-att-data-line-id="line.requisition_line_id.id" t-att-value="line.delivery_days"/>
                             </td>
                             <td class="text-end"><span class="o_tender_delta" t-att-data-line-id="line.requisition_line_id.id">0%</span></td>
-                            <td class="text-center"><span class="o_tender_is_winning" t-att-data-line-id="line.requisition_line_id.id">●</span></td>
+                            <td class="text-center"><span class="o_tender_is_winning" t-att-data-line-id="line.requisition_line_id.id">*</span></td>
                         </tr>
                     </tbody>
                 </table>
                 <div class="o_tender_live_footer d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <div>
                         Overall: <strong class="o_tender_overall_delta">0%</strong>
-                        <span class="o_tender_overall_winning ms-2">●</span>
+                        <span class="o_tender_overall_winning ms-2">*</span>
                     </div>
                     <button type="button" class="btn btn-primary o_tender_submit_live">Submit Updated Prices</button>
                 </div>
