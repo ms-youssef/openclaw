@@ -250,7 +250,7 @@ class PurchaseRequisition(models.Model):
                 'product_id': requisition_line.product_id.id,
                 'name': requisition_line.product_id.display_name,
                 'product_qty': source_line.qty if is_bid_line else requisition_line.product_qty,
-                'product_uom': (requisition_line.product_uom_id or requisition_line.product_id.uom_id).id,
+                'product_uom_id': (requisition_line.product_uom_id or requisition_line.product_id.uom_id).id,
                 'price_unit': source_line.price_unit if is_bid_line else requisition_line.price_unit,
                 'date_planned': planned_date,
                 'tender_delivery_days': delivery_days,
