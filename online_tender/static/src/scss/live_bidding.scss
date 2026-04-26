@@ -28,3 +28,28 @@
         font-size: 1.1rem;
     }
 }
+
+.o_tender_dashboard {
+    .o_tender_rank_row,
+    .o_tender_line_panel {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #fff;
+    }
+
+    .o_tender_bar {
+        height: 10px;
+        background: #e9ecef;
+        border-radius: 999px;
+        overflow: hidden;
+        margin: 6px 0;
+
+        span {
+            display: block;
+            height: 100%;
+            background: #14883d;
+        }
+    }
+}

@@ -81,7 +81,7 @@
                                 <tr t-foreach="requisition.line_ids" t-as="line">
                                     <td>
                                         <span t-field="line.product_id"/>
-                                        <div class="text-muted small" t-field="line.name"/>
+                                        <div class="text-muted small" t-out="line.product_id.display_name"/>
                                     </td>
                                     <td class="text-end"><span t-field="line.product_qty"/> <span t-field="line.product_uom_id"/></td>
                                     <td class="text-end">
@@ -165,6 +165,33 @@
                     <button type="button" class="btn btn-primary o_tender_submit_live">Submit Updated Prices</button>
                 </div>
                 <script type="application/json" id="o_tender_bootstrap"><t t-out="bootstrap_json"/></script>
+            </div>
+        </t>
+    </template>
+
+    <template id="tender_manager_dashboard" name="Tender Manager Live Dashboard">
+        <t t-call="portal.portal_layout">
+            <div class="o_tender_dashboard">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <h2 class="m-0"><t t-out="requisition.name"/> Live Dashboard</h2>
+                        <div class="text-muted">Live bidder totals, item prices, and price-change history.</div>
+                    </div>
+                    <div class="badge text-bg-dark o_tender_dashboard_timer">--:--</div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-5">
+                        <h5>Overall Ranking</h5>
+                        <div class="o_tender_dashboard_overall"></div>
+                    </div>
+                    <div class="col-lg-7">
+                        <h5>Price Movement</h5>
+                        <div class="o_tender_dashboard_history table-responsive"></div>
+                    </div>
+                </div>
+                <h5>Item Price Comparison</h5>
+                <div class="o_tender_dashboard_lines"></div>
+                <script type="application/json" id="o_tender_dashboard_bootstrap"><t t-out="dashboard_json"/></script>
             </div>
         </t>
     </template>

@@ -17,7 +17,6 @@ class TestTenderBiddingFlow(TransactionCase):
             'line_ids': [(0, 0, {
                 'product_id': self.product.id,
                 'product_qty': 10.0,
-                'product_uom_id': self.product.uom_id.id,
                 'price_unit': 10.0,
             })],
         })
