@@ -185,17 +185,26 @@ class PurchaseRequisition(models.Model):
         self.message_post(body=_('%s won the online tender with total %s.') % (winning_invitation.partner_id.display_name, winning_invitation.total_amount))
 
     def _create_online_tender_rfqs(self, invitations):
-        PurchaseOrder = self.env['purchase.order'].sudo()
         for invitation in invitations:
-            if invitation.purchase_order_id:
-                continue
             bid = invitation.active_bid_id
-            order_vals = self._prepare_online_tender_rfq_vals(invitation, bid)
+            order = self._sync_online_tender_rfq(invitation, bid)
+            self.message_post(body=_('Draft RFQ %s was updated for %s.') % (order.name, invitation.partner_id.display_name))
+
+    def _sync_online_tender_rfq(self, invitation, bid=False):
+        self.ensure_one()
+        order_vals = self._prepare_online_tender_rfq_vals(invitation, bid)
+        PurchaseOrder = self.env['purchase.order'].sudo()
+        if invitation.purchase_order_id:
+            order = invitation.purchase_order_id.sudo()
+            if order.state in ('draft', 'sent'):
+                order_vals['order_line'] = [(5, 0, 0)] + order_vals['order_line']
+                order.write(order_vals)
+        else:
             order = PurchaseOrder.create(order_vals)
             invitation.purchase_order_id = order
-            if invitation.tag_ids and 'online_tender_tag_ids' in order._fields:
-                order.online_tender_tag_ids = [(6, 0, invitation.tag_ids.ids)]
-            self.message_post(body=_('Draft RFQ %s was created for %s.') % (order.name, invitation.partner_id.display_name))
+        if invitation.tag_ids and 'online_tender_tag_ids' in order._fields:
+            order.online_tender_tag_ids = [(6, 0, invitation.tag_ids.ids)]
+        return order
 
     def _prepare_online_tender_rfq_vals(self, invitation, bid=False):
         self.ensure_one()

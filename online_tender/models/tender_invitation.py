@@ -127,6 +127,7 @@ class TenderInvitation(models.Model):
             self.requisition_id.message_post(body=_('Vendor %s submitted a bid.') % self.partner_id.display_name)
         else:
             self.requisition_id.message_post(body=_('Vendor %s adjusted a live bid.') % self.partner_id.display_name)
+        self.requisition_id._sync_online_tender_rfq(self, bid)
         return bid
 
     def _portal_ensure_live_bid(self):
