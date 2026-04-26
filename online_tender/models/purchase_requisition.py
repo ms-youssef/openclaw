@@ -29,7 +29,11 @@ class PurchaseRequisition(models.Model):
 
     @api.model
     def _get_online_tender_type(self):
-        RequisitionType = self.env['purchase.requisition.type'].sudo()
+        type_field = self._fields.get('type_id')
+        type_model_name = type_field.comodel_name if type_field else False
+        if not type_model_name or type_model_name not in self.env.registry.models:
+            return self.env['ir.model'].browse()
+        RequisitionType = self.env[type_model_name].sudo()
         for name in ('Purchase Template', 'Call for Tender', 'Tender'):
             requisition_type = RequisitionType.search([('name', 'ilike', name)], limit=1)
             if requisition_type:
@@ -38,14 +42,15 @@ class PurchaseRequisition(models.Model):
             requisition_type = RequisitionType.search([('exclusive', '=', 'multiple')], limit=1)
             if requisition_type:
                 return requisition_type
-        return RequisitionType.search([], order='sequence, id', limit=1)
+        order = 'sequence, id' if 'sequence' in RequisitionType._fields else 'id'
+        return RequisitionType.search([], order=order, limit=1)
 
     @api.onchange('is_online_tender')
     def _onchange_is_online_tender(self):
         if not self.is_online_tender:
             return
         online_tender_type = self._get_online_tender_type()
-        if online_tender_type:
+        if online_tender_type and 'type_id' in self._fields:
             self.type_id = online_tender_type
         self.vendor_id = False
 
@@ -55,13 +60,13 @@ class PurchaseRequisition(models.Model):
         for vals in vals_list:
             if vals.get('is_online_tender'):
                 online_tender_type = online_tender_type or self._get_online_tender_type()
-                if online_tender_type:
+                if online_tender_type and 'type_id' in self._fields:
                     vals.setdefault('type_id', online_tender_type.id)
                 vals.setdefault('vendor_id', False)
         return super().create(vals_list)
 
     def write(self, vals):
-        if vals.get('is_online_tender') and not vals.get('type_id'):
+        if vals.get('is_online_tender') and 'type_id' in self._fields and not vals.get('type_id'):
             online_tender_type = self._get_online_tender_type()
             if online_tender_type:
                 vals = dict(vals, type_id=online_tender_type.id, vendor_id=False)
