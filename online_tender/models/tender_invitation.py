@@ -28,6 +28,11 @@ class TenderInvitation(models.Model):
     active_bid_id = fields.Many2one('tender.bid', compute='_compute_active_bid_id', inverse='_inverse_active_bid_id', store=True)
     technical_passed = fields.Boolean(compute='_compute_technical_passed', store=True)
     purchase_order_id = fields.Many2one('purchase.order', string='Draft RFQ', readonly=True, copy=False)
+    purchase_order_technical_state = fields.Selection(
+        related='purchase_order_id.online_tender_technical_state',
+        string='RFQ Technical State',
+        store=True,
+    )
     tag_ids = fields.Many2many('tender.tag', 'tender_invitation_tag_rel', 'invitation_id', 'tag_id', string='Tags')
     total_amount = fields.Monetary(related='active_bid_id.total_amount', currency_field='currency_id', store=True)
     currency_id = fields.Many2one(related='requisition_id.currency_id', store=True)
@@ -59,9 +64,17 @@ class TenderInvitation(models.Model):
                 invitation.bid_ids.filtered(lambda bid: bid != invitation.active_bid_id).write({'is_active': False})
                 invitation.active_bid_id.is_active = True
 
-    @api.depends('active_bid_id', 'active_bid_id.line_ids', 'active_bid_id.line_ids.technical_status')
+    @api.depends(
+        'active_bid_id',
+        'active_bid_id.line_ids',
+        'active_bid_id.line_ids.technical_status',
+        'purchase_order_id.online_tender_technical_state',
+    )
     def _compute_technical_passed(self):
         for invitation in self:
+            if invitation.purchase_order_id:
+                invitation.technical_passed = invitation.purchase_order_id.online_tender_technical_state == 'approved'
+                continue
             lines = invitation.active_bid_id.line_ids
             invitation.technical_passed = bool(lines) and all(line.technical_status == 'approved' for line in lines)
 
@@ -127,7 +140,7 @@ class TenderInvitation(models.Model):
             self.requisition_id.message_post(body=_('Vendor %s submitted a bid.') % self.partner_id.display_name)
         else:
             self.requisition_id.message_post(body=_('Vendor %s adjusted a live bid.') % self.partner_id.display_name)
-        self.requisition_id._sync_online_tender_rfq(self, bid)
+        self.requisition_id._sync_online_tender_rfq(self, bid, reset_technical_state=True)
         return bid
 
     def _portal_ensure_live_bid(self):
@@ -157,6 +170,7 @@ class TenderInvitation(models.Model):
         other_totals = self.search([
             ('requisition_id', '=', self.requisition_id.id),
             ('id', '!=', self.id),
+            ('technical_passed', '=', True),
             ('active_bid_id', '!=', False),
         ]).mapped('active_bid_id.total_amount')
         best_other_total = min(other_totals) if other_totals else 0.0

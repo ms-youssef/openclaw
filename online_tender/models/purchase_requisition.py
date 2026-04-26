@@ -190,16 +190,21 @@ class PurchaseRequisition(models.Model):
             order = self._sync_online_tender_rfq(invitation, bid)
             self.message_post(body=_('Draft RFQ %s was updated for %s.') % (order.name, invitation.partner_id.display_name))
 
-    def _sync_online_tender_rfq(self, invitation, bid=False):
+    def _sync_online_tender_rfq(self, invitation, bid=False, reset_technical_state=False):
         self.ensure_one()
         order_vals = self._prepare_online_tender_rfq_vals(invitation, bid)
         PurchaseOrder = self.env['purchase.order'].sudo()
+        technical_state = 'approved' if bid and bid.submission_kind == 'live' else 'pending'
         if invitation.purchase_order_id:
             order = invitation.purchase_order_id.sudo()
             if order.state in ('draft', 'sent'):
+                if reset_technical_state and 'online_tender_technical_state' in order._fields:
+                    order_vals['online_tender_technical_state'] = technical_state
                 order_vals['order_line'] = [(5, 0, 0)] + order_vals['order_line']
                 order.write(order_vals)
         else:
+            if 'online_tender_technical_state' in PurchaseOrder._fields:
+                order_vals['online_tender_technical_state'] = technical_state
             order = PurchaseOrder.create(order_vals)
             invitation.purchase_order_id = order
         if invitation.tag_ids and 'online_tender_tag_ids' in order._fields:

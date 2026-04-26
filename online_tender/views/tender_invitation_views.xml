@@ -9,6 +9,7 @@
                 <field name="requisition_id"/>
                 <field name="partner_id"/>
                 <field name="state"/>
+                <field name="purchase_order_technical_state"/>
                 <field name="technical_passed"/>
                 <field name="total_amount"/>
                 <field name="tag_ids" widget="many2many_tags"/>
@@ -42,6 +43,7 @@
                         </group>
                         <group string="Results">
                             <field name="active_bid_id" readonly="1"/>
+                            <field name="purchase_order_technical_state" readonly="1"/>
                             <field name="technical_passed" readonly="1"/>
                             <field name="purchase_order_id" readonly="1"/>
                             <field name="total_amount" readonly="1"/>

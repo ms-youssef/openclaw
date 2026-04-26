@@ -50,6 +50,7 @@
                         <list>
                             <field name="name"/>
                             <field name="partner_id"/>
+                            <field name="online_tender_technical_state"/>
                             <field name="amount_total"/>
                             <field name="online_tender_tag_ids" widget="many2many_tags"/>
                             <field name="state"/>

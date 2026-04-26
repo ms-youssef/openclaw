@@ -32,10 +32,15 @@ class TestTenderBiddingFlow(TransactionCase):
             'state': 'sent',
         })
 
+    def _approve_invitation(self, invitation):
+        invitation.purchase_order_id.action_online_tender_approve_technical()
+
     def test_bid_supersession_and_delta(self):
         first = self.invitation_a.action_submit_quote({self.line.id: 9.5})
         second = self.invitation_a.action_submit_quote({self.line.id: 9.0})
         self.invitation_b.action_submit_quote({self.line.id: 8.5})
+        self._approve_invitation(self.invitation_a)
+        self._approve_invitation(self.invitation_b)
         self.assertFalse(first.is_active)
         self.assertTrue(second.is_active)
         snapshot = self.invitation_a._get_delta_snapshot()
@@ -46,8 +51,23 @@ class TestTenderBiddingFlow(TransactionCase):
     def test_winner_computation(self):
         self.invitation_a.action_submit_quote({self.line.id: 9.0})
         self.invitation_b.action_submit_quote({self.line.id: 8.5})
+        self._approve_invitation(self.invitation_a)
+        self._approve_invitation(self.invitation_b)
         self.requisition.online_state = 'bidding_open'
         self.requisition.action_close_bidding()
         self.assertEqual(self.requisition.online_state, 'awarded')
         self.assertEqual(self.requisition.winning_invitation_id, self.invitation_b)
         self.assertTrue(self.invitation_b.active_bid_id.line_ids.is_winner)
+
+    def test_rejected_rfq_is_excluded_from_live_bidding(self):
+        self.invitation_a.action_submit_quote({self.line.id: 9.0})
+        self.invitation_b.action_submit_quote({self.line.id: 8.5})
+        self.invitation_a.purchase_order_id.action_online_tender_approve_technical()
+        self.invitation_b.purchase_order_id.action_online_tender_reject_technical()
+
+        self.requisition.action_start_bidding(duration_minutes=30)
+
+        self.assertTrue(self.invitation_a.technical_passed)
+        self.assertFalse(self.invitation_b.technical_passed)
+        self.assertEqual(self.invitation_a.state, 'live')
+        self.assertEqual(self.invitation_b.state, 'submitted')
